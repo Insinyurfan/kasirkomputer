@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { requireUser } from "@/lib/auth";
 import { formatRupiah } from "@/lib/money";
 import { voidSale } from "@/app/actions/sales";
@@ -8,11 +9,6 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 export const metadata = { title: "Riwayat — Shinzi Computer POS" };
 export const dynamic = "force-dynamic";
 
-function todayStr(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
 function startOfDay(s: string): Date | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
   if (!m) return null;
@@ -34,6 +30,12 @@ function formatDateTime(d: Date): string {
     d.getHours(),
   )}:${pad(d.getMinutes())}`;
 }
+function fmtDate(s: string): string {
+  const d = startOfDay(s);
+  if (!d) return s;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
 
 export default async function HistoryPage({
   searchParams,
@@ -42,20 +44,27 @@ export default async function HistoryPage({
 }) {
   const me = await requireUser();
   const sp = await searchParams;
-  const from = sp.from || todayStr();
-  const to = sp.to || from;
 
-  const gte = startOfDay(from) ?? startOfDay(todayStr())!;
-  const lte = endOfDay(to) ?? endOfDay(todayStr())!;
+  const from = startOfDay(sp.from ?? "") ? sp.from! : null;
+  const to = startOfDay(sp.to ?? "") ? sp.to! : null;
+  const filtered = !!(from || to);
+
+  const createdAt: Prisma.DateTimeFilter = {};
+  if (from) createdAt.gte = startOfDay(from)!;
+  if (to) createdAt.lte = endOfDay(to)!;
 
   const sales = await prisma.sale.findMany({
-    where: { createdAt: { gte, lte } },
+    where: filtered ? { createdAt } : {},
     orderBy: { createdAt: "desc" },
   });
 
-  const filteredTotal = sales
+  const total = sales
     .filter((s) => !s.voided)
     .reduce((sum, s) => sum + s.grandTotal, 0);
+
+  const rangeLabel = filtered
+    ? `${from ? fmtDate(from) : "awal"} – ${to ? fmtDate(to) : "sekarang"}`
+    : "semua waktu";
 
   return (
     <>
@@ -63,23 +72,39 @@ export default async function HistoryPage({
 
       {sp.error ? <p className="error panel">{sp.error}</p> : null}
 
-      <form className="panel inline-form" method="get">
-        <div className="field grow">
-          <label htmlFor="from">Dari tanggal</label>
-          <input id="from" type="date" name="from" defaultValue={from} />
-        </div>
-        <div className="field grow">
-          <label htmlFor="to">Sampai tanggal</label>
-          <input id="to" type="date" name="to" defaultValue={to} />
-        </div>
-        <button className="btn secondary" type="submit">
-          Terapkan
-        </button>
-      </form>
+      <details className="filter-box" open={filtered}>
+        <summary className="filter-toggle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+            <path d="M4 5h16l-6 8v5l-4 2v-7L4 5z" strokeLinejoin="round" />
+          </svg>
+          <span>Filter tanggal</span>
+          {filtered ? <span className="filter-badge">{rangeLabel}</span> : null}
+        </summary>
+        <form className="filter-form" method="get">
+          <div className="field">
+            <label htmlFor="from">Dari tanggal</label>
+            <input id="from" type="date" name="from" defaultValue={from ?? ""} />
+          </div>
+          <div className="field">
+            <label htmlFor="to">Sampai tanggal</label>
+            <input id="to" type="date" name="to" defaultValue={to ?? ""} />
+          </div>
+          <button className="btn secondary" type="submit">
+            Terapkan
+          </button>
+          {filtered ? (
+            <Link className="btn btn-ghost btn-sm" href="/history">
+              Tampilkan semua
+            </Link>
+          ) : null}
+        </form>
+      </details>
 
       <div className="panel total-strip">
-        <span>Total penjualan (tidak termasuk yang dibatalkan)</span>
-        <strong>{formatRupiah(filteredTotal)}</strong>
+        <span>
+          Total penjualan ({rangeLabel}, tanpa yang dibatalkan) · {sales.length} nota
+        </span>
+        <strong>{formatRupiah(total)}</strong>
       </div>
 
       {!me.isOwner ? (
@@ -91,7 +116,9 @@ export default async function HistoryPage({
       <div className="panel table-wrap">
         {sales.length === 0 ? (
           <p className="hint" style={{ margin: 0 }}>
-            Tidak ada penjualan pada rentang tanggal ini.
+            {filtered
+              ? "Tidak ada penjualan pada rentang tanggal ini."
+              : "Belum ada penjualan."}
           </p>
         ) : (
           <table>
