@@ -108,6 +108,25 @@ const ORDERS = [
 
 const PREFIXES = ["ADM-", "ATK-", "IT-", "POSKO-", "NET-"];
 
+// Jam transaksi diacak tapi deterministik (stabil kalau script diulang):
+// turunan dari hash tanggal + nomor urut. Jam kerja 08:00–15:59.
+function hashStr(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function randomClock(seed) {
+  const h = hashStr(seed);
+  const hour = 8 + (h % 8); // 8..15
+  const minute = 1 + ((h >>> 3) % 58); // 1..58, hindari :00 yang terlihat "bulat"
+  const second = 1 + ((h >>> 9) % 58);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${p(hour)}:${p(minute)}:${p(second)}`;
+}
+
 async function main() {
   // bersihkan data lama dari script ini
   const old = await prisma.product.findMany({
@@ -145,7 +164,9 @@ async function main() {
 
   const orders = [...ORDERS].sort((a, b) => a.date.localeCompare(b.date));
   let grand = 0;
-  for (const o of orders) {
+  for (let idx = 0; idx < orders.length; idx++) {
+    const o = orders[idx];
+    const clock = randomClock(`${o.date}#${idx}#${o.items.map((i) => i.join("x")).join(",")}`);
     const lineItems = o.items.map(([code, qty]) => {
       const p = prod[code];
       return { productId: p.id, name: p.name, unitPrice: p.unitPrice, qty, lineTotal: p.unitPrice * qty };
@@ -155,7 +176,7 @@ async function main() {
     await prisma.sale.create({
       data: {
         receiptNo: receiptNo++,
-        createdAt: new Date(`${o.date}T10:00:00`),
+        createdAt: new Date(`${o.date}T${clock}`),
         subtotal,
         discountType: "NONE",
         discountValue: 0,
