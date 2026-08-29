@@ -19,6 +19,7 @@ export type ReceiptSale = {
 
 export type ReceiptSettings = {
   shopName: string;
+  logoUrl: string | null;
   address: string;
   phone: string;
   headerNote: string | null;
@@ -56,6 +57,10 @@ export function Receipt({
       {sale.voided ? <div className="receipt-void">VOID</div> : null}
 
       <div className="receipt-header">
+        {settings.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={settings.logoUrl} alt="" className="receipt-logo" />
+        ) : null}
         <div className="receipt-shop">{settings.shopName}</div>
         {settings.address ? <div>{settings.address}</div> : null}
         {settings.phone ? <div>Telp: {settings.phone}</div> : null}
