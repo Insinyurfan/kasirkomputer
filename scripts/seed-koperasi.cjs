@@ -1,5 +1,5 @@
 // One-off: mengisi katalog rinci + riwayat pesanan untuk pengadaan
-// "Koperasi Merah Putih" (Juli–September 2026).
+// "Koperasi Merah Putih" (Juli–Agustus 2026, semua sudah berlangsung).
 //
 //   node scripts/seed-koperasi.cjs
 //
@@ -72,12 +72,12 @@ const BASKETS = {
 };
 
 const ORDERS = [
-  // 1. Tinta & HVS — 5 pertemuan (Jul–Sep)
-  { date: "2026-07-08", items: BASKETS.L1[A] },
-  { date: "2026-07-22", items: BASKETS.L1[B] },
-  { date: "2026-08-05", items: BASKETS.L1[A] },
-  { date: "2026-08-19", items: BASKETS.L1[B] },
-  { date: "2026-09-02", items: BASKETS.L1[A] },
+  // 1. Tinta & HVS — 5 pertemuan (Jul–Agu; sudah berlangsung, semua <= 29 Agu 2026)
+  { date: "2026-07-09", items: BASKETS.L1[A] },
+  { date: "2026-07-23", items: BASKETS.L1[B] },
+  { date: "2026-08-06", items: BASKETS.L1[A] },
+  { date: "2026-08-16", items: BASKETS.L1[B] },
+  { date: "2026-08-27", items: BASKETS.L1[A] },
   // 2. ATK Digital — 7 pertemuan (Jul–Agu)
   { date: "2026-07-03", items: BASKETS.L2[A] },
   { date: "2026-07-10", items: BASKETS.L2[B] },
