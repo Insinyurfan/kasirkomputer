@@ -1,0 +1,121 @@
+// Shinzi Computer POS — data model
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  displayName  String
+  passwordHash String
+  role         Role     @default(MEMBER)
+  isOwner      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sales Sale[]
+
+  @@index([role])
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  products Product[]
+}
+
+model Product {
+  id         Int       @id @default(autoincrement())
+  name       String
+  code       String?
+  unitPrice  Int
+  active     Boolean   @default(true)
+  imageUrl   String?
+  categoryId Int?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  saleItems SaleItem[]
+
+  @@index([active])
+  @@index([categoryId])
+}
+
+enum DiscountType {
+  NONE
+  AMOUNT
+  PERCENT
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  QRIS
+}
+
+model Sale {
+  id             Int           @id @default(autoincrement())
+  receiptNo      Int           @unique
+  createdAt      DateTime      @default(now())
+  subtotal       Int
+  discountType   DiscountType  @default(NONE)
+  discountValue  Int           @default(0)
+  discountAmount Int           @default(0)
+  grandTotal     Int
+  paymentMethod  PaymentMethod @default(CASH)
+  amountPaid     Int?
+  changeAmount   Int?
+  voided         Boolean       @default(false)
+  voidReason     String?
+  voidedAt       DateTime?
+  cashierId      Int?
+  cashierName    String?
+  cashier        User?         @relation(fields: [cashierId], references: [id], onDelete: SetNull)
+
+  items SaleItem[]
+
+  @@index([createdAt])
+  @@index([voided])
+}
+
+model SaleItem {
+  id        Int    @id @default(autoincrement())
+  saleId    Int
+  productId Int?
+  name      String
+  unitPrice Int
+  qty       Int
+  lineTotal Int
+
+  sale    Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([saleId])
+}
+
+model ShopSettings {
+  id                Int      @id @default(1)
+  shopName          String   @default("Shinzi Computer")
+  logoUrl           String?
+  address           String   @default("")
+  phone             String   @default("")
+  headerNote        String?
+  footerNote        String?
+  startingReceiptNo Int      @default(1000)
+  updatedAt         DateTime @updatedAt
+}
