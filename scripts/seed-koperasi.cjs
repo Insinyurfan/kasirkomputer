@@ -142,7 +142,6 @@ async function main() {
     settings.startingReceiptNo,
     (agg._max.receiptNo ?? settings.startingReceiptNo - 1) + 1,
   );
-  const owner = await prisma.user.findFirst({ where: { isOwner: true } });
 
   const orders = [...ORDERS].sort((a, b) => a.date.localeCompare(b.date));
   let grand = 0;
@@ -165,8 +164,8 @@ async function main() {
         paymentMethod: "CASH",
         amountPaid: subtotal,
         changeAmount: 0,
-        cashierId: owner ? owner.id : null,
-        cashierName: owner ? owner.displayName : null,
+        cashierId: null,
+        cashierName: "Kasir", // catatan pengadaan — bukan transaksi kasir tertentu
         items: { create: lineItems },
       },
     });
