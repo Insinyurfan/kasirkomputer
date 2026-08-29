@@ -38,7 +38,7 @@ export default async function ReceiptPage({
         <Receipt sale={sale} settings={settings} />
       </div>
 
-      <ReceiptActions receiptNo={sale.receiptNo} />
+      <ReceiptActions saleId={saleId} receiptNo={sale.receiptNo} />
     </>
   );
 }

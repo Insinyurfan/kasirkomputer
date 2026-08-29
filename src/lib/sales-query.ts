@@ -1,23 +1,23 @@
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import type { ReceiptSale } from "@/components/Receipt";
 
-export async function getSaleForReceipt(id: number): Promise<ReceiptSale | null> {
-  const sale = await prisma.sale.findUnique({
-    where: { id },
-    include: { items: { orderBy: { id: "asc" } } },
-  });
-  if (!sale) return null;
+type SaleWithItems = Prisma.SaleGetPayload<{ include: { items: true } }>;
+
+export function mapSaleToReceipt(sale: SaleWithItems): ReceiptSale {
   return {
     receiptNo: sale.receiptNo,
     createdAt: sale.createdAt,
     cashierName: sale.cashierName,
-    items: sale.items.map((it) => ({
-      name: it.name,
-      unitPrice: it.unitPrice,
-      qty: it.qty,
-      lineTotal: it.lineTotal,
-    })),
+    items: [...sale.items]
+      .sort((a, b) => a.id - b.id)
+      .map((it) => ({
+        name: it.name,
+        unitPrice: it.unitPrice,
+        qty: it.qty,
+        lineTotal: it.lineTotal,
+      })),
     subtotal: sale.subtotal,
     discountType: sale.discountType,
     discountValue: sale.discountValue,
@@ -29,4 +29,12 @@ export async function getSaleForReceipt(id: number): Promise<ReceiptSale | null>
     voided: sale.voided,
     voidReason: sale.voidReason,
   };
+}
+
+export async function getSaleForReceipt(id: number): Promise<ReceiptSale | null> {
+  const sale = await prisma.sale.findUnique({
+    where: { id },
+    include: { items: { orderBy: { id: "asc" } } },
+  });
+  return sale ? mapSaleToReceipt(sale) : null;
 }

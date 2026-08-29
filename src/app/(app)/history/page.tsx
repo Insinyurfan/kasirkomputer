@@ -1,24 +1,14 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
 import { requireUser } from "@/lib/auth";
 import { formatRupiah } from "@/lib/money";
+import { parseHistoryRange } from "@/lib/history-range";
 import { voidSale } from "@/app/actions/sales";
 import { ConfirmButton } from "@/components/ConfirmButton";
 
 export const metadata = { title: "Riwayat — Shinzi Computer POS" };
 export const dynamic = "force-dynamic";
 
-function startOfDay(s: string): Date | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
-  if (!m) return null;
-  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0, 0);
-}
-function endOfDay(s: string): Date | null {
-  const start = startOfDay(s);
-  if (!start) return null;
-  return new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
-}
 const PAYMENT_LABEL: Record<string, string> = {
   CASH: "Tunai",
   TRANSFER: "Transfer",
@@ -30,12 +20,6 @@ function formatDateTime(d: Date): string {
     d.getHours(),
   )}:${pad(d.getMinutes())}`;
 }
-function fmtDate(s: string): string {
-  const d = startOfDay(s);
-  if (!d) return s;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
-}
 
 export default async function HistoryPage({
   searchParams,
@@ -44,17 +28,10 @@ export default async function HistoryPage({
 }) {
   const me = await requireUser();
   const sp = await searchParams;
-
-  const from = startOfDay(sp.from ?? "") ? sp.from! : null;
-  const to = startOfDay(sp.to ?? "") ? sp.to! : null;
-  const filtered = !!(from || to);
-
-  const createdAt: Prisma.DateTimeFilter = {};
-  if (from) createdAt.gte = startOfDay(from)!;
-  if (to) createdAt.lte = endOfDay(to)!;
+  const range = parseHistoryRange(sp.from, sp.to);
 
   const sales = await prisma.sale.findMany({
-    where: filtered ? { createdAt } : {},
+    where: range.where,
     orderBy: { createdAt: "desc" },
   });
 
@@ -62,37 +39,52 @@ export default async function HistoryPage({
     .filter((s) => !s.voided)
     .reduce((sum, s) => sum + s.grandTotal, 0);
 
-  const rangeLabel = filtered
-    ? `${from ? fmtDate(from) : "awal"} – ${to ? fmtDate(to) : "sekarang"}`
-    : "semua waktu";
+  const exportQuery = new URLSearchParams();
+  if (range.from) exportQuery.set("from", range.from);
+  if (range.to) exportQuery.set("to", range.to);
+  const exportHref = `/history/export${
+    exportQuery.toString() ? `?${exportQuery}` : ""
+  }`;
 
   return (
     <>
-      <h1 className="page-title">Riwayat penjualan</h1>
+      <div className="page-head">
+        <h1 className="page-title">Riwayat penjualan</h1>
+        {sales.length > 0 ? (
+          <a className="btn secondary" href={exportHref}>
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+              <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Unduh nota (PDF)
+          </a>
+        ) : null}
+      </div>
 
       {sp.error ? <p className="error panel">{sp.error}</p> : null}
 
-      <details className="filter-box" open={filtered}>
+      <details className="filter-box" open={range.filtered}>
         <summary className="filter-toggle">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
             <path d="M4 5h16l-6 8v5l-4 2v-7L4 5z" strokeLinejoin="round" />
           </svg>
           <span>Filter tanggal</span>
-          {filtered ? <span className="filter-badge">{rangeLabel}</span> : null}
+          {range.filtered ? (
+            <span className="filter-badge">{range.label}</span>
+          ) : null}
         </summary>
         <form className="filter-form" method="get">
           <div className="field">
             <label htmlFor="from">Dari tanggal</label>
-            <input id="from" type="date" name="from" defaultValue={from ?? ""} />
+            <input id="from" type="date" name="from" defaultValue={range.from ?? ""} />
           </div>
           <div className="field">
             <label htmlFor="to">Sampai tanggal</label>
-            <input id="to" type="date" name="to" defaultValue={to ?? ""} />
+            <input id="to" type="date" name="to" defaultValue={range.to ?? ""} />
           </div>
           <button className="btn secondary" type="submit">
             Terapkan
           </button>
-          {filtered ? (
+          {range.filtered ? (
             <Link className="btn btn-ghost btn-sm" href="/history">
               Tampilkan semua
             </Link>
@@ -102,7 +94,8 @@ export default async function HistoryPage({
 
       <div className="panel total-strip">
         <span>
-          Total penjualan ({rangeLabel}, tanpa yang dibatalkan) · {sales.length} nota
+          Total penjualan ({range.label}, tanpa yang dibatalkan) · {sales.length}{" "}
+          nota
         </span>
         <strong>{formatRupiah(total)}</strong>
       </div>
@@ -116,7 +109,7 @@ export default async function HistoryPage({
       <div className="panel table-wrap">
         {sales.length === 0 ? (
           <p className="hint" style={{ margin: 0 }}>
-            {filtered
+            {range.filtered
               ? "Tidak ada penjualan pada rentang tanggal ini."
               : "Belum ada penjualan."}
           </p>
@@ -151,6 +144,9 @@ export default async function HistoryPage({
                     )}
                   </td>
                   <td className="row-actions">
+                    <a className="btn btn-sm secondary" href={`/receipt/${s.id}/pdf`}>
+                      PDF
+                    </a>
                     <Link className="btn btn-sm secondary" href={`/receipt/${s.id}`}>
                       Nota
                     </Link>
