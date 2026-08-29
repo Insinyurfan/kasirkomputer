@@ -13,7 +13,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id">
-      <body>{children}</body>
+      {/* Ekstensi browser (pengisi form / password manager) sering menambah
+          atribut ke <body> sebelum React hydrate — abaikan mismatch itu. */}
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }
