@@ -60,6 +60,22 @@ npm run start
 | `npm test` | Unit test |
 | `npm run lint` | Cek lint |
 
+## Deploy / hosting
+
+Aplikasi ini memakai **SQLite** (`prisma/dev.db`) dan menyimpan foto di
+**disk lokal** (`data/uploads/`). Ini pas untuk dijalankan langsung di **PC
+toko** (`npm run build && npm run start`).
+
+Untuk hosting serverless (Vercel/Netlify) SQLite + disk lokal **tidak bisa**
+(filesystem read-only & ephemeral). Perlu diganti dulu:
+
+- Database → **Turso** (libSQL, kompatibel Prisma) atau **Postgres**
+  (Neon/Supabase/Vercel Postgres).
+- Upload foto → **Vercel Blob / S3 / Cloudinary** menggantikan `src/lib/uploads.ts`.
+
+Kalau mau jalan tanpa server (1 PC), cara paling gampang tetap `npm run start`
+di PC toko, atau bungkus jadi app desktop.
+
 ## Backup data
 
 - Database: satu file **`prisma/dev.db`** — salin secara berkala.
