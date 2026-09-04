@@ -4,6 +4,12 @@ import { useState } from "react";
 
 const TARGET_ID = "receipt-print-area";
 
+const PDF_TEMPLATES: { tpl: string; label: string }[] = [
+  { tpl: "thermal", label: "Struk 80mm" },
+  { tpl: "nota", label: "Nota A5" },
+  { tpl: "invoice", label: "Invoice A4" },
+];
+
 function getNode(): HTMLElement {
   const el = document.getElementById(TARGET_ID);
   if (!el) throw new Error("Receipt element not found");
@@ -44,11 +50,20 @@ export function ReceiptActions({
   }
 
   return (
-    <div className="no-print" style={{ marginTop: 16 }}>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <a className="btn secondary" href={`/receipt/${saleId}/pdf`}>
-          Download PDF
-        </a>
+    <div className="no-print receipt-actions">
+      <div className="receipt-actions-row">
+        <span className="receipt-actions-label">Unduh PDF —</span>
+        {PDF_TEMPLATES.map((t) => (
+          <a
+            key={t.tpl}
+            className="btn btn-sm secondary"
+            href={`/receipt/${saleId}/pdf?tpl=${t.tpl}`}
+          >
+            {t.label}
+          </a>
+        ))}
+      </div>
+      <div className="receipt-actions-row">
         <button
           className="btn secondary"
           type="button"

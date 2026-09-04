@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
 import { mapSaleToReceipt } from "@/lib/sales-query";
 import { parseHistoryRange } from "@/lib/history-range";
-import { buildReceiptsPdf } from "@/lib/receipt-pdf";
+import { buildReceiptsPdf, asTemplate, TEMPLATE_SLUG } from "@/lib/receipt-pdf";
 
 export async function GET(req: Request) {
   await requireUser();
@@ -20,6 +20,7 @@ export async function GET(req: Request) {
     : null;
 
   const range = parseHistoryRange(searchParams.get("from"), searchParams.get("to"));
+  const template = asTemplate(searchParams.get("tpl"));
 
   const sales = await prisma.sale.findMany({
     where: receiptNos ? { receiptNo: { in: receiptNos } } : range.where,
@@ -33,15 +34,17 @@ export async function GET(req: Request) {
   const settings = await getSettings();
   const bytes = await buildReceiptsPdf(
     sales.map((s) => ({ sale: mapSaleToReceipt(s), settings })),
+    template,
   );
 
   const first = sales[0].receiptNo;
   const last = sales[sales.length - 1].receiptNo;
+  const slug = TEMPLATE_SLUG[template];
   const filename = receiptNos
-    ? `nota-terpilih-${first}-${last}.pdf`
+    ? `nota-terpilih-${first}-${last}-${slug}.pdf`
     : range.filtered
-      ? `nota-${range.from ?? "awal"}-sd-${range.to ?? "akhir"}.pdf`
-      : `nota-${first}-${last}.pdf`;
+      ? `nota-${range.from ?? "awal"}-sd-${range.to ?? "akhir"}-${slug}.pdf`
+      : `nota-${first}-${last}-${slug}.pdf`;
 
   return new NextResponse(new Uint8Array(bytes), {
     headers: {

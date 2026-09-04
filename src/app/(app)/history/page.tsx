@@ -39,24 +39,40 @@ export default async function HistoryPage({
     .filter((s) => !s.voided)
     .reduce((sum, s) => sum + s.grandTotal, 0);
 
-  const exportQuery = new URLSearchParams();
-  if (range.from) exportQuery.set("from", range.from);
-  if (range.to) exportQuery.set("to", range.to);
-  const exportHref = `/history/export${
-    exportQuery.toString() ? `?${exportQuery}` : ""
-  }`;
+  const exportHref = (tpl: string) => {
+    const q = new URLSearchParams();
+    if (range.from) q.set("from", range.from);
+    if (range.to) q.set("to", range.to);
+    q.set("tpl", tpl);
+    return `/history/export?${q}`;
+  };
+  const PDF_TEMPLATES = [
+    { tpl: "thermal", label: "Struk Kasir 80mm" },
+    { tpl: "nota", label: "Nota Toko (A5)" },
+    { tpl: "invoice", label: "Invoice (A4)" },
+  ];
 
   return (
     <>
       <div className="page-head">
         <h1 className="page-title">Riwayat penjualan</h1>
         {sales.length > 0 ? (
-          <a className="btn secondary" href={exportHref}>
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
-              <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Unduh nota (PDF)
-          </a>
+          <details className="dl-menu">
+            <summary className="btn secondary">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+                <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Unduh nota (PDF)
+            </summary>
+            <div className="dl-menu-list">
+              <span className="dl-menu-head">Pilih desain struk</span>
+              {PDF_TEMPLATES.map((t) => (
+                <a key={t.tpl} href={exportHref(t.tpl)}>
+                  {t.label}
+                </a>
+              ))}
+            </div>
+          </details>
         ) : null}
       </div>
 
