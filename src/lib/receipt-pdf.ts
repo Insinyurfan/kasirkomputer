@@ -1,7 +1,11 @@
 import "server-only";
 import { PDFDocument, StandardFonts, type PDFFont, type PDFPage } from "pdf-lib";
 import { formatRupiah } from "./money";
-import type { ReceiptSale, ReceiptSettings } from "@/components/Receipt";
+import {
+  effectiveShop,
+  type ReceiptSale,
+  type ReceiptSettings,
+} from "@/components/Receipt";
 
 const MM = 2.834645669; // 1mm in pt
 const PAGE_W = 80 * MM; // 80mm thermal
@@ -57,9 +61,10 @@ function buildOps(
   const center = (txt: string, bold?: boolean, size?: number) =>
     wrap(txt).forEach((l) => push({ t: "text", s: l, align: "center", bold, size }));
 
-  center(settings.shopName, true, S + 2);
-  if (settings.address) center(settings.address);
-  if (settings.phone) center(`Telp: ${settings.phone}`);
+  const shop = effectiveShop(sale, settings);
+  center(shop.name, true, S + 2);
+  if (shop.address) center(shop.address);
+  if (shop.phone) center(`Telp: ${shop.phone}`);
   if (settings.headerNote) center(settings.headerNote);
 
   push({ t: "rule" });

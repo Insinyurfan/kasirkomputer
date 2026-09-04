@@ -10,6 +10,9 @@ export function mapSaleToReceipt(sale: SaleWithItems): ReceiptSale {
     receiptNo: sale.receiptNo,
     createdAt: sale.createdAt,
     cashierName: sale.cashierName,
+    shopName: sale.shopName,
+    shopAddress: sale.shopAddress,
+    shopPhone: sale.shopPhone,
     items: [...sale.items]
       .sort((a, b) => a.id - b.id)
       .map((it) => ({

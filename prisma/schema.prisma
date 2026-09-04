@@ -87,6 +87,12 @@ model Sale {
   cashierName    String?
   cashier        User?         @relation(fields: [cashierId], references: [id], onDelete: SetNull)
 
+  // Snapshot identitas toko saat nota dibuat (mis. pengadaan dari toko lain).
+  // Kalau null, nota pakai ShopSettings global.
+  shopName    String?
+  shopAddress String?
+  shopPhone   String?
+
   items SaleItem[]
 
   @@index([createdAt])

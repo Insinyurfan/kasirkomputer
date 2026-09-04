@@ -4,6 +4,10 @@ export type ReceiptSale = {
   receiptNo: number;
   createdAt: Date | string;
   cashierName: string | null;
+  /** Snapshot toko saat nota dibuat; kalau null pakai ShopSettings global. */
+  shopName?: string | null;
+  shopAddress?: string | null;
+  shopPhone?: string | null;
   items: { name: string; unitPrice: number; qty: number; lineTotal: number }[];
   subtotal: number;
   discountType: "NONE" | "AMOUNT" | "PERCENT";
@@ -25,6 +29,19 @@ export type ReceiptSettings = {
   headerNote: string | null;
   footerNote: string | null;
 };
+
+/** Identitas toko yang dipakai di nota: snapshot per-nota kalau ada, kalau
+ *  tidak jatuh ke ShopSettings global. Logo global hanya dipakai kalau nota
+ *  tidak punya snapshot toko sendiri. */
+export function effectiveShop(sale: ReceiptSale, settings: ReceiptSettings) {
+  const hasSnapshot = !!sale.shopName;
+  return {
+    name: sale.shopName || settings.shopName,
+    address: hasSnapshot ? sale.shopAddress ?? "" : settings.address,
+    phone: hasSnapshot ? sale.shopPhone ?? "" : settings.phone,
+    logoUrl: hasSnapshot ? null : settings.logoUrl,
+  };
+}
 
 const PAYMENT_LABEL: Record<ReceiptSale["paymentMethod"], string> = {
   CASH: "Tunai",
@@ -51,19 +68,20 @@ export function Receipt({
     sale.discountType === "PERCENT"
       ? `Diskon (${sale.discountValue}%)`
       : "Diskon";
+  const shop = effectiveShop(sale, settings);
 
   return (
     <div id="receipt-print-area" className="receipt">
       {sale.voided ? <div className="receipt-void">VOID</div> : null}
 
       <div className="receipt-header">
-        {settings.logoUrl ? (
+        {shop.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={settings.logoUrl} alt="" className="receipt-logo" />
+          <img src={shop.logoUrl} alt="" className="receipt-logo" />
         ) : null}
-        <div className="receipt-shop">{settings.shopName}</div>
-        {settings.address ? <div>{settings.address}</div> : null}
-        {settings.phone ? <div>Telp: {settings.phone}</div> : null}
+        <div className="receipt-shop">{shop.name}</div>
+        {shop.address ? <div>{shop.address}</div> : null}
+        {shop.phone ? <div>Telp: {shop.phone}</div> : null}
         {settings.headerNote ? <div>{settings.headerNote}</div> : null}
       </div>
 

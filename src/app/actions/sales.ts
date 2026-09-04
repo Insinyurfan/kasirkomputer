@@ -92,6 +92,9 @@ export async function completeSale(
             changeAmount,
             cashierId: me.id,
             cashierName: me.displayName,
+            shopName: settings.shopName,
+            shopAddress: settings.address,
+            shopPhone: settings.phone,
             items: { create: itemData },
           },
         });
